@@ -56,7 +56,7 @@ $fadeOut = if ($audio.fadeOut -ne $null) { [double]$audio.fadeOut } else { 0.8 }
 $fadeOutStart = [Math]::Max(0, $audioDuration - $fadeOut)
 
 ffmpeg -hide_banner -y -ss $audioStart -t $audioDuration -i $audio.path -vn `
-  -af "afade=t=in:st=0:d=$fadeIn,afade=t=out:st=$fadeOutStart:d=$fadeOut" `
+  -af "afade=t=in:st=0:d=${fadeIn},afade=t=out:st=${fadeOutStart}:d=${fadeOut}" `
   -c:a libmp3lame -b:a 192k $audioOut
 if ($LASTEXITCODE -ne 0) { throw "Audio extraction failed." }
 
@@ -112,4 +112,3 @@ if ($resolvedGsap -and (Test-Path -LiteralPath $resolvedGsap)) {
 
 Copy-Item -LiteralPath $edlPath -Destination (Join-Path $OutDir "edl.json") -Force
 Write-Host "Created video mix project: $OutDir"
-

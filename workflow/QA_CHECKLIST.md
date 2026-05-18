@@ -36,3 +36,11 @@ Extract representative frames at:
 
 Do not deliver if black frames, silence, frozen clips, broken text, unintended subtitles, or rough template transitions remain.
 
+## Cinematic Character Extra Checks
+
+- [ ] Dialogue is intelligible over music.
+- [ ] Subtitle timing matches the spoken line.
+- [ ] Subtitle text does not cover important faces or hands.
+- [ ] Each section advances the character arc.
+- [ ] The final third contains the emotional peak or visual payoff.
+- [ ] No source subtitle conflicts with the custom subtitle layer.

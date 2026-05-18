@@ -1,0 +1,71 @@
+{
+  "project": {
+    "name": "character-tribute",
+    "duration": 60,
+    "width": 1920,
+    "height": 792,
+    "fps": 24,
+    "title": "Character Name",
+    "kicker": "A Cinematic Study"
+  },
+  "music": {
+    "path": "D:/path/to/music.mp3",
+    "start": 0,
+    "duration": 60,
+    "volume": 0.42,
+    "fadeIn": 1.2,
+    "fadeOut": 2.5
+  },
+  "assets": {
+    "gsap": "D:/hyperframes/generated/death-guard-11ed-video/gsap.min.js"
+  },
+  "shots": [
+    {
+      "id": "shot-01",
+      "source": "D:/path/to/episode-or-film.mp4",
+      "sourceStart": 120.5,
+      "timelineStart": 0,
+      "duration": 5.2,
+      "note": "cold open wide"
+    },
+    {
+      "id": "shot-02",
+      "source": "D:/path/to/episode-or-film.mp4",
+      "sourceStart": 352.1,
+      "timelineStart": 5.2,
+      "duration": 4.8,
+      "note": "first close-up"
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "dialogue-01",
+      "source": "D:/path/to/episode-or-film.mp4",
+      "sourceStart": 352.4,
+      "timelineStart": 5.5,
+      "duration": 3.6,
+      "volume": 1,
+      "fadeIn": 0.05,
+      "fadeOut": 0.12,
+      "speaker": "Character",
+      "subtitle": "I have given everything for this."
+    }
+  ],
+  "captions": [
+    {
+      "id": "caption-01",
+      "timelineStart": 5.5,
+      "duration": 3.6,
+      "text": "I have given everything for this."
+    }
+  ],
+  "sections": [
+    {
+      "label": "Cold Open",
+      "start": 0,
+      "end": 10,
+      "intent": "establish loneliness"
+    }
+  ]
+}
+

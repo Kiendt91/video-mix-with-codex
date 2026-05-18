@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en" data-resolution="cinematic">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width={{WIDTH}}, height={{HEIGHT}}" />
+    <script src="./gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: {{WIDTH}}px;
+        height: {{HEIGHT}}px;
+        overflow: hidden;
+        background: #050606;
+        font-family: Arial, sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: {{WIDTH}}px;
+        height: {{HEIGHT}}px;
+        overflow: hidden;
+        background: #050606;
+        color: #f4f0e8;
+      }
+
+      .video-shot {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #050606;
+      }
+
+      .grade,
+      .vignette,
+      .grain,
+      .title,
+      .subtitle-cue {
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .grade {
+        inset: 0;
+        z-index: 20;
+        background:
+          radial-gradient(circle at 50% 28%, rgba(226, 235, 220, 0.12), transparent 34%),
+          linear-gradient(90deg, rgba(8, 27, 33, 0.36), transparent 45%, rgba(56, 34, 20, 0.18)),
+          linear-gradient(0deg, rgba(4, 5, 5, 0.2), rgba(4, 5, 5, 0.2));
+        mix-blend-mode: soft-light;
+        opacity: 0.76;
+      }
+
+      .vignette {
+        inset: -2px;
+        z-index: 30;
+        box-shadow: inset 0 0 180px 58px rgba(0, 0, 0, 0.84);
+      }
+
+      .grain {
+        inset: 0;
+        z-index: 35;
+        opacity: 0.12;
+        background-image:
+          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0, rgba(255, 255, 255, 0.045) 1px, transparent 1px, transparent 3px),
+          repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0, rgba(0, 0, 0, 0.05) 1px, transparent 1px, transparent 5px);
+        mix-blend-mode: overlay;
+      }
+
+      .title {
+        left: 8%;
+        bottom: 13%;
+        z-index: 60;
+        display: grid;
+        gap: 14px;
+        padding: 18px 34px 20px 24px;
+        background: linear-gradient(90deg, rgba(0, 0, 0, 0.74), rgba(0, 0, 0, 0.38), transparent);
+        text-transform: uppercase;
+        filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.82));
+      }
+
+      .kicker {
+        font-size: {{KICKER_SIZE}}px;
+        line-height: 1;
+        color: #f4f0e8;
+      }
+
+      .headline {
+        font-size: {{TITLE_SIZE}}px;
+        line-height: 0.95;
+        letter-spacing: 0;
+        font-weight: 700;
+        color: #f4f0e8;
+      }
+
+      .subtitle-cue {
+        left: 50%;
+        bottom: 7.5%;
+        z-index: 70;
+        width: 74%;
+        transform: translateX(-50%);
+        color: #f7f2e8;
+        font-size: {{SUBTITLE_SIZE}}px;
+        line-height: 1.22;
+        text-align: center;
+        text-shadow:
+          0 2px 4px rgba(0, 0, 0, 0.96),
+          0 0 18px rgba(0, 0, 0, 0.72);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="{{DURATION}}" data-width="{{WIDTH}}" data-height="{{HEIGHT}}">
+      {{VIDEO_CLIPS}}
+      <audio id="music-bed" class="clip" data-start="0" data-duration="{{DURATION}}" data-track-index="5" data-volume="{{MUSIC_VOLUME}}" src="./media/music.m4a" preload="auto"></audio>
+      {{DIALOGUE_AUDIO}}
+      {{CAPTIONS}}
+
+      <div class="grade"></div>
+      <div class="vignette"></div>
+      <div class="grain"></div>
+      <div class="title">
+        <div class="kicker">{{KICKER}}</div>
+        <div class="headline">{{TITLE}}</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const tl = gsap.timeline({ paused: true });
+      const duration = {{DURATION}};
+
+      gsap.set(".title", { autoAlpha: 0, y: 18 });
+      gsap.set(".subtitle-cue", { autoAlpha: 0, y: 10 });
+
+      tl.fromTo(".title", { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: "power2.out" }, 0.25);
+      tl.to(".title", { autoAlpha: 0, y: -10, duration: 0.9, ease: "power2.in" }, {{TITLE_OUT}});
+      tl.fromTo(".grade", { opacity: 0.62 }, { opacity: 0.82, duration, ease: "sine.inOut" }, 0);
+
+      document.querySelectorAll(".subtitle-cue").forEach((el) => {
+        const start = Number(el.dataset.start || 0);
+        const cueDuration = Number(el.dataset.duration || 1);
+        tl.fromTo(el, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.18, ease: "power2.out" }, start);
+        tl.to(el, { autoAlpha: 0, y: -6, duration: 0.22, ease: "power2.in" }, Math.max(start, start + cueDuration - 0.22));
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
