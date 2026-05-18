@@ -1,22 +1,46 @@
 # Video Mix With Codex
 
-Reusable workflow for making beat-synced music videos with Codex, FFmpeg, and HyperFrames.
+A practical workflow for editing music videos with Codex, FFmpeg, and HyperFrames.
 
-This repo packages the editing process we used: analyze the song, choose strong moments from source videos, cut on musical beats or emotional dialogue beats, avoid obvious curtain/wipe transitions, render with HyperFrames, then run mandatory QA.
+The project is built around a simple idea: do not pick video timestamps blindly. First understand the song, screen the footage, decide what every shot and audio line is doing, then render and QA the result before delivery.
 
-## What This Is
+It supports two common edit styles:
 
-- A repeatable music-video editing workflow.
-- HyperFrames composition template for hard cuts plus subtle beat flashes.
-- Cinematic character-edit mode for dialogue-led tribute videos.
-- PowerShell scripts for media probing, shot extraction, rendering, vertical conversion, and QA.
-- Example EDL schema you can copy for a new project.
+- **Beat-cut MV**: the music drives the edit, with cuts and visual accents placed on beats or phrase changes.
+- **Cinematic story MV**: the song carries the emotion, while selected dialogue and character-focused shots tell a clear story.
 
-## What This Is Not
+## Core Workflow
 
-- It does not include source videos or music.
-- It does not upload rendered MP4s by default.
-- It does not depend on a specific Warhammer project; that was only the first test case.
+1. **Prepare media**
+   - Put your music and source videos in a project folder.
+   - Keep original media outside this repo, or in ignored folders such as `source/`, `media/`, or `generated/`.
+   - Use one clean music track whenever possible.
+
+2. **Inspect every source**
+   - Probe duration, fps, resolution, audio streams, and codec.
+   - Check whether the source contains episode cards, intro/outro cards, credits, hard subtitles, logos, or random SFX.
+   - For narrative sources, treat source video audio as unsafe by default.
+
+3. **Create contact sheets**
+   - Make visual sheets from each video before selecting shots.
+   - For every candidate shot, inspect start, middle, and end frames.
+   - Reject ranges with title cards like `EP 04`, credits, unrelated subtitles, black frames, or repeated filler.
+
+4. **Build the story and timing**
+   - For a beat-cut MV, map song sections: intro, lift, drop, bridge, climax, ending.
+   - For a cinematic MV, write the emotional arc first: whose POV, what changes, where the reveal lands.
+   - Keep each shot's reason in the EDL. If a shot has no story or rhythm purpose, cut it.
+
+5. **Assign audio roles**
+   - `music_bed`: the main song.
+   - `dialogue_line`: a short, intentional dialogue line that matches the visible moment.
+   - `diegetic_sfx`: a source sound kept on purpose.
+   - `muted_visual`: normal default for source footage.
+
+6. **Generate, render, and QA**
+   - Generate a HyperFrames project from an EDL.
+   - Run `lint`, `validate`, `inspect`, snapshots, render, blackdetect, and final frame review.
+   - Do not deliver if the final MP4 has black frames, accidental subtitles, wrong dialogue, rough template transitions, or audio that masks important speech.
 
 ## Requirements
 
@@ -27,70 +51,188 @@ This repo packages the editing process we used: analyze the song, choose strong 
 
 Optional:
 
+- `yt-dlp` for downloading a reference music track or source video when you have the right to use it.
 - Bun, if you are working inside the HyperFrames monorepo.
 
-## Quick Start
+## Quick Start: Beat-Cut MV
 
-### Beat-Cut Music Video
-
-1. Copy `examples/edl.example.json` to your own project folder.
-2. Update `audio.path` and each shot `source` path.
-3. Run:
+Copy the example EDL, update paths, then generate and render:
 
 ```powershell
-.\scripts\New-VideoMixProject.ps1 -Edl .\examples\edl.example.json -OutDir D:\video-renders\my-mix
-.\scripts\Render-VideoMix.ps1 -ProjectDir D:\video-renders\my-mix
-.\scripts\Test-VideoMix.ps1 -ProjectDir D:\video-renders\my-mix
+Copy-Item .\examples\edl.example.json D:\video-renders\my-mix\edl.json
+
+.\scripts\New-VideoMixProject.ps1 `
+  -Edl D:\video-renders\my-mix\edl.json `
+  -OutDir D:\video-renders\my-mix\project
+
+.\scripts\Render-VideoMix.ps1 `
+  -ProjectDir D:\video-renders\my-mix\project
+
+.\scripts\Test-VideoMix.ps1 `
+  -ProjectDir D:\video-renders\my-mix\project
 ```
 
-### Cinematic Character Edit
+Use this when you want a clean montage driven mostly by rhythm and visual energy.
 
-Use this for tribute-style videos driven by dialogue and emotional arc.
+## Quick Start: Cinematic Story MV
 
-1. Copy `examples/cinematic-character-edl.example.json`.
-2. Fill in `shots`, `dialogue`, and `captions`.
-3. Run:
+Copy the cinematic EDL when the edit needs a character arc, selected dialogue, and restrained transitions:
 
 ```powershell
-.\scripts\New-CinematicEditProject.ps1 -Edl .\examples\cinematic-character-edl.example.json -OutDir D:\video-renders\my-character-edit
-.\scripts\Render-VideoMix.ps1 -ProjectDir D:\video-renders\my-character-edit -SnapshotAt "0.5,5.5,12,24,36,48,58"
-.\scripts\Test-VideoMix.ps1 -ProjectDir D:\video-renders\my-character-edit -Times "0.5,5.5,12,24,36,48,58"
+Copy-Item .\examples\cinematic-character-edl.example.json D:\video-renders\my-story-mv\edl.json
+
+.\scripts\New-CinematicEditProject.ps1 `
+  -Edl D:\video-renders\my-story-mv\edl.json `
+  -OutDir D:\video-renders\my-story-mv\project
+
+.\scripts\Render-VideoMix.ps1 `
+  -ProjectDir D:\video-renders\my-story-mv\project `
+  -SnapshotAt "0.5,5,12,24,36,48,60,75,90"
+
+.\scripts\Test-VideoMix.ps1 `
+  -ProjectDir D:\video-renders\my-story-mv\project `
+  -Times "0.5,5,12,24,36,48,60,75,90"
 ```
 
-For TikTok/Shorts output after a landscape render:
+Use this for edits like a romance MV, character tribute, trailer-style story montage, or any source where dialogue can easily become chaotic if not controlled.
+
+## EDL Basics
+
+An EDL is a JSON edit decision list. It tells the scripts what to extract and where to place it on the timeline.
+
+Minimum structure:
+
+```json
+{
+  "project": {
+    "title": "Melting Down",
+    "kicker": "Character POV",
+    "width": 1920,
+    "height": 1080,
+    "fps": 24,
+    "duration": 110.736
+  },
+  "music": {
+    "path": "D:/media/music.m4a",
+    "start": 0,
+    "duration": 110.736,
+    "volume": 0.52,
+    "fadeIn": 0.8,
+    "fadeOut": 3.2
+  },
+  "shots": [
+    {
+      "id": "shot-01",
+      "source": "D:/media/source-01.mp4",
+      "sourceStart": 15,
+      "timelineStart": 0,
+      "duration": 5.5,
+      "trackIndex": 0,
+      "audioRole": "muted_visual",
+      "storyBeat": "He waits alone before noticing her.",
+      "visualRisk": "clean range; no title card"
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "dialogue-01",
+      "source": "D:/media/source-03.mp4",
+      "sourceStart": 75.35,
+      "timelineStart": 49.05,
+      "duration": 3.35,
+      "volume": 1.45,
+      "fadeIn": 0.08,
+      "fadeOut": 0.18
+    }
+  ],
+  "captions": []
+}
+```
+
+For a full-song MV, set `project.duration` and `music.duration` to the measured duration of the song. A tiny encode-level difference of a few frames is normal after final MP4 export.
+
+## Shot Selection Rules
+
+- Prefer meaningful close-ups, hands, glances, walking direction, and clear emotional reversals.
+- Avoid repeating the same image unless it is a deliberate callback.
+- Avoid obvious curtain, slide, left/right wipe, and template-style transitions.
+- Use crossfades only when the two shots belong to the same emotional phrase.
+- Do not use source intro cards, episode cards, end cards, credits, or channel screens as story footage.
+- If burned-in subtitles conflict with the edit, choose another range or mask them with a letterbox treatment.
+
+## Audio Mix Rules
+
+- Keep the song as the main bed.
+- Keep source footage muted unless a line or SFX is intentionally listed in the EDL.
+- Use only a few dialogue lines in an MV; too many turns it into a recap scene.
+- Place dialogue on quieter parts of the song or reduce music volume in the EDL.
+- Dialogue should be clearly intelligible, but it should not feel pasted on top of the song.
+- After render, check the final MP4 with `volumedetect` or a manual listen pass at start, middle, climax, and ending.
+
+Example final audio check:
 
 ```powershell
-.\scripts\New-VerticalVersion.ps1 -InputMp4 D:\video-renders\my-mix\renders\final.mp4 -OutputMp4 D:\video-renders\my-mix\renders\final_vertical.mp4
+ffmpeg -hide_banner -i final.mp4 -af volumedetect -vn -sn -dn -f null -
 ```
 
-## Editing Principles
+## Vertical Version
 
-- Cut on real musical accents, not equal durations.
-- Keep fewer, stronger shots before adding more effects.
-- Prefer hard cuts, short light flashes, impact pulses, and subtle grade changes.
-- Avoid curtain, slide, left/right wipe, and obvious template transitions unless the content explicitly needs them.
-- Avoid looping the same image pool; unique shot selection matters more than transition complexity.
-- Normalize every extracted shot to the target frame size, fps, codec, and dense keyframes before rendering.
-- For cinematic character edits, dialogue clarity beats visual complexity.
-- For cinematic character edits, use invisible transitions, long emotional holds, clean subtitle cues, and ultrawide framing.
+After a landscape render, create a 1080x1920 version for TikTok, Shorts, or Reels:
+
+```powershell
+.\scripts\New-VerticalVersion.ps1 `
+  -InputMp4 D:\video-renders\my-mix\project\renders\final.mp4 `
+  -OutputMp4 D:\video-renders\my-mix\project\renders\final_vertical.mp4
+```
+
+Review the vertical crop manually. Character edits often need custom crop decisions because faces and hands matter more than center framing.
+
+## Mandatory QA
+
+Run these checks before delivery:
+
+```powershell
+npx hyperframes lint
+npx hyperframes validate
+npx hyperframes inspect
+npx hyperframes snapshot --at 0.5,5,12,24,36,48,60,75,90
+npx hyperframes render
+
+ffprobe -hide_banner -v error -show_entries format=duration:stream=codec_type,width,height,r_frame_rate -of default=nw=1 final.mp4
+ffmpeg -hide_banner -i final.mp4 -vf "blackdetect=d=0.08:pix_th=0.08" -an -f null -
+```
+
+Also extract representative frames from the rendered MP4, not only preview snapshots. Check the first visible frame, every important transition, every dialogue moment, the climax, and the final resolve.
 
 ## Repo Layout
 
 ```text
 scripts/
-  New-CinematicEditProject.ps1  Build dialogue-led cinematic edit from an EDL.
-  New-VideoMixProject.ps1   Build HyperFrames project from an EDL.
-  Render-VideoMix.ps1       Lint, validate, inspect, snapshot, render.
-  Test-VideoMix.ps1         FFprobe + blackdetect + QA frame extraction.
-  New-VerticalVersion.ps1   Convert landscape render to 1080x1920.
+  Analyze-Media.ps1             Probe media files.
+  New-VideoMixProject.ps1       Build a beat-cut HyperFrames project from an EDL.
+  New-CinematicEditProject.ps1  Build a dialogue/story-led HyperFrames project.
+  Render-VideoMix.ps1           Lint, validate, inspect, snapshot, and render.
+  Test-VideoMix.ps1             FFprobe, blackdetect, and QA frame extraction.
+  New-VerticalVersion.ps1       Convert a landscape render to 1080x1920.
+
 templates/
   hyperframes/index.template.html
   hyperframes/cinematic-character.template.html
+
 workflow/
-  CINEMATIC_CHARACTER_EDIT.md
   WORKFLOW.md
+  CINEMATIC_CHARACTER_EDIT.md
   STYLE_GUIDE.md
   QA_CHECKLIST.md
+
 examples/
   edl.example.json
+  cinematic-character-edl.example.json
 ```
+
+## Practical Notes
+
+- Start with a short test render before committing to a full song.
+- Save candidate contact sheets next to each project; they are the fastest way to catch bad ranges.
+- Keep the final timeline simple until the story works.
+- A clean emotional edit beats a complex edit full of random effects.
