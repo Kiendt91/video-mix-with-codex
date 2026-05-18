@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $errors = @()
+          Get-ChildItem -Path scripts -Filter *.ps1 -Recurse | ForEach-Object {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count -gt 0) {
+              $errors += $parseErrors
+            }
+          }
+          if ($errors.Count -gt 0) {
+            $errors | Format-List
+            exit 1
+          }
+
+      - name: Parse JSON files
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path examples,schemas -Filter *.json -Recurse | ForEach-Object {
+            Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json | Out-Null
+          }
+
+      - name: Check README required sections
+        shell: pwsh
+        run: |
+          $readme = Get-Content -LiteralPath README.md -Raw
+          @(
+            'Core Workflow',
+            'Quick Start: Beat-Cut MV',
+            'Quick Start: Cinematic Story MV',
+            'Mandatory QA'
+          ) | ForEach-Object {
+            if ($readme -notmatch [regex]::Escape($_)) {
+              throw "README missing required section: $_"
+            }
+          }

@@ -54,6 +54,12 @@ Optional:
 - `yt-dlp` for downloading a reference music track or source video when you have the right to use it.
 - Bun, if you are working inside the HyperFrames monorepo.
 
+Run the environment check before starting a new machine or project:
+
+```powershell
+.\scripts\Test-Environment.ps1
+```
+
 ## Quick Start: Beat-Cut MV
 
 Copy the example EDL, update paths, then generate and render:
@@ -96,9 +102,44 @@ Copy-Item .\examples\cinematic-character-edl.example.json D:\video-renders\my-st
 
 Use this for edits like a romance MV, character tribute, trailer-style story montage, or any source where dialogue can easily become chaotic if not controlled.
 
+## Audit Before Editing
+
+Create contact sheets for source videos:
+
+```powershell
+.\scripts\New-ContactSheet.ps1 `
+  -Path D:\video-renders\my-story-mv\sources `
+  -OutDir D:\video-renders\my-story-mv\audit\source-sheets `
+  -IntervalSec 8
+```
+
+After drafting an EDL, create a candidate audit sheet from the exact selected ranges:
+
+```powershell
+.\scripts\New-CandidateAudit.ps1 `
+  -Edl D:\video-renders\my-story-mv\edl.json `
+  -OutDir D:\video-renders\my-story-mv\audit\candidates
+```
+
+Review `candidate-audit-sheet.jpg` before rendering. Each row shows start, middle, and end frames for a selected shot. If a row shows an episode card, unrelated subtitle, credit, black frame, or mismatched character moment, fix the EDL first.
+
 ## EDL Basics
 
 An EDL is a JSON edit decision list. It tells the scripts what to extract and where to place it on the timeline.
+
+Use the schema for editor hints:
+
+```json
+{
+  "$schema": "./schemas/edl.schema.json"
+}
+```
+
+Validate a real EDL after replacing placeholder media paths:
+
+```powershell
+.\scripts\Validate-Edl.ps1 -Edl D:\video-renders\my-story-mv\edl.json
+```
 
 Minimum structure:
 
@@ -172,7 +213,15 @@ For a full-song MV, set `project.duration` and `music.duration` to the measured 
 Example final audio check:
 
 ```powershell
-ffmpeg -hide_banner -i final.mp4 -af volumedetect -vn -sn -dn -f null -
+.\scripts\Test-AudioMix.ps1 -FinalMp4 D:\video-renders\my-story-mv\project\renders\final.mp4
+```
+
+Create a limiter-balanced copy when peaks are too close to `0 dB`:
+
+```powershell
+.\scripts\Test-AudioMix.ps1 `
+  -FinalMp4 D:\video-renders\my-story-mv\project\renders\final.mp4 `
+  -CreateBalanced
 ```
 
 ## Vertical Version
@@ -209,11 +258,19 @@ Also extract representative frames from the rendered MP4, not only preview snaps
 ```text
 scripts/
   Analyze-Media.ps1             Probe media files.
+  Test-Environment.ps1          Check local toolchain readiness.
+  Validate-Edl.ps1              Validate EDL structure and timeline consistency.
+  New-ContactSheet.ps1          Create source-video contact sheets.
+  New-CandidateAudit.ps1        Extract start/middle/end frames for selected EDL shots.
   New-VideoMixProject.ps1       Build a beat-cut HyperFrames project from an EDL.
   New-CinematicEditProject.ps1  Build a dialogue/story-led HyperFrames project.
   Render-VideoMix.ps1           Lint, validate, inspect, snapshot, and render.
   Test-VideoMix.ps1             FFprobe, blackdetect, and QA frame extraction.
+  Test-AudioMix.ps1             Measure audio levels and create a limiter-balanced MP4.
   New-VerticalVersion.ps1       Convert a landscape render to 1080x1920.
+
+schemas/
+  edl.schema.json
 
 templates/
   hyperframes/index.template.html
@@ -228,6 +285,7 @@ workflow/
 examples/
   edl.example.json
   cinematic-character-edl.example.json
+  male-pov-romance.edl.example.json
 ```
 
 ## Practical Notes

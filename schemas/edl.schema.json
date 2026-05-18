@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Kiendt91/video-mix-with-codex/schemas/edl.schema.json",
+  "title": "Video Mix With Codex EDL",
+  "type": "object",
+  "required": ["project", "shots"],
+  "oneOf": [
+    { "required": ["music"] },
+    { "required": ["audio"] }
+  ],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["duration", "width", "height", "fps"],
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "kicker": { "type": "string" },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "width": { "type": "integer", "minimum": 16 },
+        "height": { "type": "integer", "minimum": 16 },
+        "fps": { "type": "integer", "minimum": 1, "maximum": 120 }
+      },
+      "additionalProperties": true
+    },
+    "music": { "$ref": "#/$defs/audioBed" },
+    "audio": { "$ref": "#/$defs/audioBed" },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "gsap": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "style": {
+      "type": "object",
+      "properties": {
+        "flashColors": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/shot" }
+    },
+    "dialogue": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dialogue" }
+    },
+    "captions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/caption" }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "start": { "type": "number", "minimum": 0 },
+          "end": { "type": "number", "minimum": 0 },
+          "intent": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$defs": {
+    "audioBed": {
+      "type": "object",
+      "required": ["path", "start", "duration"],
+      "properties": {
+        "path": { "type": "string" },
+        "start": { "type": "number", "minimum": 0 },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "volume": { "type": "number", "minimum": 0 },
+        "fadeIn": { "type": "number", "minimum": 0 },
+        "fadeOut": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "shot": {
+      "type": "object",
+      "required": ["id", "source", "sourceStart", "timelineStart", "duration"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string" },
+        "sourceStart": { "type": "number", "minimum": 0 },
+        "timelineStart": { "type": "number", "minimum": 0 },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "trackIndex": { "type": "integer", "minimum": 0 },
+        "audioRole": {
+          "type": "string",
+          "enum": ["muted_visual", "music_bed", "dialogue_line", "dialogue_match_visual", "diegetic_sfx"]
+        },
+        "storyBeat": { "type": "string" },
+        "visualRisk": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "dialogue": {
+      "type": "object",
+      "required": ["id", "source", "sourceStart", "timelineStart", "duration"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string" },
+        "sourceStart": { "type": "number", "minimum": 0 },
+        "timelineStart": { "type": "number", "minimum": 0 },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "volume": { "type": "number", "minimum": 0 },
+        "fadeIn": { "type": "number", "minimum": 0 },
+        "fadeOut": { "type": "number", "minimum": 0 },
+        "speaker": { "type": "string" },
+        "subtitle": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "caption": {
+      "type": "object",
+      "required": ["duration"],
+      "properties": {
+        "id": { "type": "string" },
+        "timelineStart": { "type": "number", "minimum": 0 },
+        "start": { "type": "number", "minimum": 0 },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "text": { "type": "string" },
+        "subtitle": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,104 @@
+{
+  "$schema": "../schemas/edl.schema.json",
+  "project": {
+    "name": "male-pov-romance-mv",
+    "title": "Melting Down",
+    "kicker": "Male POV",
+    "width": 1920,
+    "height": 1080,
+    "fps": 24,
+    "duration": 110.736
+  },
+  "music": {
+    "path": "D:/path/to/song.m4a",
+    "start": 0,
+    "duration": 110.736,
+    "volume": 0.52,
+    "fadeIn": 0.8,
+    "fadeOut": 3.2
+  },
+  "assets": {
+    "gsap": "D:/path/to/gsap.min.js"
+  },
+  "shots": [
+    {
+      "id": "shot-01-rain-memory",
+      "source": "D:/path/to/episode-01.mp4",
+      "sourceStart": 5,
+      "timelineStart": 0,
+      "duration": 5.6,
+      "trackIndex": 0,
+      "audioRole": "muted_visual",
+      "storyBeat": "His memory starts at the rainy bus stop.",
+      "visualRisk": "inspect start/middle/end frames; reject episode cards"
+    },
+    {
+      "id": "shot-02-first-look",
+      "source": "D:/path/to/episode-01.mp4",
+      "sourceStart": 24,
+      "timelineStart": 9.65,
+      "duration": 5.4,
+      "trackIndex": 1,
+      "audioRole": "muted_visual",
+      "storyBeat": "The first awkward look from his side.",
+      "visualRisk": "watch for hardcoded subtitles near bottom"
+    },
+    {
+      "id": "shot-03-direct-line",
+      "source": "D:/path/to/episode-03.mp4",
+      "sourceStart": 72,
+      "timelineStart": 44.65,
+      "duration": 8.4,
+      "trackIndex": 0,
+      "audioRole": "dialogue_match_visual",
+      "storyBeat": "He finally gives a direct reason for staying close.",
+      "visualRisk": "intentional dialogue moment; verify line matches visible speaker"
+    },
+    {
+      "id": "shot-04-final-resolve",
+      "source": "D:/path/to/finale.mp4",
+      "sourceStart": 140,
+      "timelineStart": 108.1,
+      "duration": 2.636,
+      "trackIndex": 1,
+      "audioRole": "muted_visual",
+      "storyBeat": "Final look lands on the end of the song.",
+      "visualRisk": "mask or avoid source subtitles"
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "dialogue-because-youre-here",
+      "source": "D:/path/to/episode-03.mp4",
+      "sourceStart": 75.35,
+      "timelineStart": 49.05,
+      "duration": 3.35,
+      "volume": 1.45,
+      "fadeIn": 0.08,
+      "fadeOut": 0.18,
+      "speaker": "Male lead",
+      "subtitle": "Because... you're here."
+    }
+  ],
+  "captions": [],
+  "sections": [
+    {
+      "label": "Memory",
+      "start": 0,
+      "end": 24,
+      "intent": "establish the male lead's quiet attention"
+    },
+    {
+      "label": "Choice",
+      "start": 44,
+      "end": 58,
+      "intent": "use one clear line of dialogue as the emotional turn"
+    },
+    {
+      "label": "Resolve",
+      "start": 98,
+      "end": 110.736,
+      "intent": "save the biggest city/fireworks imagery for the ending"
+    }
+  ]
+}

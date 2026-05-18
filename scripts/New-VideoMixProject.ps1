@@ -25,6 +25,11 @@ if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
   throw "ffmpeg was not found on PATH."
 }
 
+$validator = Join-Path $PSScriptRoot "Validate-Edl.ps1"
+if (Test-Path -LiteralPath $validator) {
+  & $validator -Edl $Edl
+}
+
 $edlPath = Resolve-Path -LiteralPath $Edl
 $config = Get-Content -LiteralPath $edlPath -Raw | ConvertFrom-Json
 $project = $config.project

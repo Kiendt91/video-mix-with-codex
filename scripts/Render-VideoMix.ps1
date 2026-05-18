@@ -4,6 +4,10 @@ param(
 
   [string]$Output = "renders\final.mp4",
 
+  [int]$Fps,
+
+  [string]$Quality,
+
   [string]$SnapshotAt = "0.5,3.1,6.1,9.1,12.1,15.1,18.1,21.1,24.1",
 
   [switch]$SkipSnapshots
@@ -28,9 +32,16 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "hyperframes snapshot failed." }
   }
 
-  npx hyperframes render --output $Output
+  $renderArgs = @("hyperframes", "render", "--output", $Output)
+  if ($Fps) {
+    $renderArgs += @("--fps", [string]$Fps)
+  }
+  if ($Quality) {
+    $renderArgs += @("--quality", $Quality)
+  }
+
+  npx @renderArgs
   if ($LASTEXITCODE -ne 0) { throw "hyperframes render failed." }
 } finally {
   Pop-Location
 }
-
