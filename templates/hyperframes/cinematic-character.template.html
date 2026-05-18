@@ -36,6 +36,8 @@
         height: 100%;
         object-fit: cover;
         background: #050606;
+        opacity: 0;
+        will-change: opacity, transform;
       }
 
       .grade,
@@ -150,6 +152,18 @@
         const cueDuration = Number(el.dataset.duration || 1);
         tl.fromTo(el, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.18, ease: "power2.out" }, start);
         tl.to(el, { autoAlpha: 0, y: -6, duration: 0.22, ease: "power2.in" }, Math.max(start, start + cueDuration - 0.22));
+      });
+
+      const videoShots = Array.from(document.querySelectorAll(".video-shot"));
+      videoShots.forEach((el, index) => {
+        const start = Number(el.dataset.start || 0);
+        const clipDuration = Number(el.dataset.duration || 0);
+        const fadeIn = index === 0 ? 0.35 : Math.min(0.7, Math.max(0.35, clipDuration * 0.12));
+        const fadeOut = Math.min(0.7, Math.max(0.35, clipDuration * 0.12));
+        tl.fromTo(el, { opacity: 0, scale: 1.012 }, { opacity: 1, scale: 1, duration: fadeIn, ease: "sine.out" }, start);
+        if (index < videoShots.length - 1) {
+          tl.to(el, { opacity: 0, duration: fadeOut, ease: "sine.inOut" }, Math.max(start, start + clipDuration - fadeOut));
+        }
       });
 
       window.__timelines["main"] = tl;

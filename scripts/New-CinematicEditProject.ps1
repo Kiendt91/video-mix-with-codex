@@ -68,13 +68,14 @@ for ($i = 0; $i -lt $shots.Count; $i++) {
   $srcStart = [double]$shot.sourceStart
   $shotDuration = [double]$shot.duration
   $timelineStart = [double]$shot.timelineStart
+  $trackIndex = if ($shot.trackIndex -ne $null) { [int]$shot.trackIndex } else { 0 }
 
   $vf = "scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=yuv420p,fps=$fps"
   ffmpeg -hide_banner -y -ss $srcStart -t ($shotDuration + 0.05) -i $shot.source -an `
     -vf $vf -c:v libx264 -preset veryfast -crf 19 -g $fps -keyint_min $fps -sc_threshold 0 -movflags +faststart $shotOut
   if ($LASTEXITCODE -ne 0) { throw "Shot extraction failed: $id" }
 
-  $videoTags.Add("      <video id=""$id"" class=""clip video-shot"" data-start=""$timelineStart"" data-duration=""$shotDuration"" data-track-index=""0"" src=""./media/$shotFile"" muted playsinline preload=""auto""></video>")
+  $videoTags.Add("      <video id=""$id"" class=""clip video-shot"" data-start=""$timelineStart"" data-duration=""$shotDuration"" data-track-index=""$trackIndex"" src=""./media/$shotFile"" muted playsinline preload=""auto""></video>")
 }
 
 $dialogueTags = New-Object System.Collections.Generic.List[string]
