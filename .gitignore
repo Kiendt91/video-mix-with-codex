@@ -1,0 +1,32 @@
+# Local media and generated outputs
+media/
+source/
+sources/
+input/
+inputs/
+renders/
+snapshots/
+qa/
+qa-final/
+probe/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+*.mp3
+*.wav
+*.flac
+*.aac
+
+# HyperFrames/local caches
+.hyperframes/
+node_modules/
+.cache/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+

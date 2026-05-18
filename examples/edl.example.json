@@ -1,0 +1,51 @@
+{
+  "project": {
+    "name": "my-beat-cut",
+    "duration": 28,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "title": "No Mercy Cut",
+    "kicker": "Burning Rubber"
+  },
+  "audio": {
+    "path": "D:/path/to/song.mp3",
+    "start": 0,
+    "duration": 28,
+    "fadeIn": 0.2,
+    "fadeOut": 0.9
+  },
+  "style": {
+    "flashColors": ["#f7f0cf", "#93ffd4", "#fff0b4", "#ffd28b", "#f7f0cf", "#8ff7cc", "#ffe1a6", "#f7f0cf"]
+  },
+  "assets": {
+    "gsap": "D:/hyperframes/generated/death-guard-11ed-video/gsap.min.js"
+  },
+  "shots": [
+    {
+      "id": "shot-01",
+      "source": "D:/path/to/source-a.mp4",
+      "sourceStart": 0,
+      "timelineStart": 0,
+      "duration": 3,
+      "note": "cold open"
+    },
+    {
+      "id": "shot-02",
+      "source": "D:/path/to/source-b.mp4",
+      "sourceStart": 10,
+      "timelineStart": 3,
+      "duration": 3,
+      "note": "first beat cut"
+    },
+    {
+      "id": "shot-03",
+      "source": "D:/path/to/source-c.mp4",
+      "sourceStart": 40,
+      "timelineStart": 6,
+      "duration": 3,
+      "note": "impact"
+    }
+  ]
+}
+

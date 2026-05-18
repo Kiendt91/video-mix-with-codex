@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width={{WIDTH}}, height={{HEIGHT}}" />
+    <script src="./gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: {{WIDTH}}px;
+        height: {{HEIGHT}}px;
+        overflow: hidden;
+        background: #020202;
+        font-family: Arial, sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: {{WIDTH}}px;
+        height: {{HEIGHT}}px;
+        overflow: hidden;
+        background: #020202;
+        color: #f3f1ea;
+      }
+
+      .video-shot {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #020202;
+      }
+
+      .grade,
+      .vignette,
+      .pulse,
+      .flash,
+      .scanline,
+      .title,
+      .meter {
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .grade {
+        inset: 0;
+        z-index: 20;
+        background:
+          radial-gradient(circle at 52% 34%, rgba(244, 232, 184, 0.14), transparent 34%),
+          linear-gradient(110deg, rgba(13, 58, 50, 0.3), transparent 38%, rgba(122, 32, 18, 0.24)),
+          linear-gradient(0deg, rgba(4, 4, 4, 0.16), rgba(4, 4, 4, 0.16));
+        mix-blend-mode: color-dodge;
+        opacity: 0.34;
+      }
+
+      .vignette {
+        inset: -2px;
+        z-index: 30;
+        box-shadow: inset 0 0 220px 76px rgba(0, 0, 0, 0.82);
+      }
+
+      .pulse {
+        inset: -10%;
+        z-index: 40;
+        background:
+          radial-gradient(circle at 50% 50%, rgba(255, 222, 138, 0.26), transparent 20%),
+          radial-gradient(circle at 50% 50%, rgba(42, 211, 158, 0.12), transparent 42%);
+        mix-blend-mode: screen;
+        opacity: 0;
+        transform: scale(0.92);
+      }
+
+      .flash {
+        inset: 0;
+        z-index: 45;
+        background: #f7f0cf;
+        mix-blend-mode: screen;
+        opacity: 0;
+      }
+
+      .scanline {
+        inset: 0;
+        z-index: 50;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(255, 255, 255, 0.05) 0,
+          rgba(255, 255, 255, 0.05) 1px,
+          transparent 1px,
+          transparent 4px
+        );
+        opacity: 0.13;
+      }
+
+      .title {
+        left: 74px;
+        bottom: 82px;
+        z-index: 60;
+        display: grid;
+        gap: 12px;
+        text-transform: uppercase;
+        filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.8));
+      }
+
+      .kicker {
+        font-size: 18px;
+        line-height: 1;
+        letter-spacing: 0;
+        color: #d8c27c;
+      }
+
+      .headline {
+        font-size: 58px;
+        line-height: 0.94;
+        font-weight: 800;
+        letter-spacing: 0;
+        color: #f6f1df;
+      }
+
+      .meter {
+        left: 74px;
+        right: 74px;
+        bottom: 44px;
+        z-index: 60;
+        height: 2px;
+        background: rgba(246, 241, 223, 0.16);
+      }
+
+      .meter span {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, #c7a33a, #f4ead0, #38c69d);
+        transform: scaleX(0);
+        transform-origin: left;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="{{DURATION}}" data-width="{{WIDTH}}" data-height="{{HEIGHT}}">
+      {{VIDEO_CLIPS}}
+      <audio id="music" class="clip" data-start="0" data-duration="{{DURATION}}" data-track-index="5" src="./media/music.mp3" preload="auto"></audio>
+
+      <div class="grade"></div>
+      <div class="vignette"></div>
+      <div class="pulse"></div>
+      <div class="flash"></div>
+      <div class="scanline"></div>
+
+      <div class="title">
+        <div class="kicker">{{KICKER}}</div>
+        <div class="headline">{{TITLE}}</div>
+      </div>
+      <div class="meter"><span></span></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const tl = gsap.timeline({ paused: true });
+      const cutTimes = {{CUT_TIMES}};
+      const flashColors = {{FLASH_COLORS}};
+
+      gsap.set(".title", { autoAlpha: 0, y: 26 });
+      gsap.set(".meter span", { scaleX: 0 });
+      gsap.set(".flash", { opacity: 0 });
+      gsap.set(".pulse", { opacity: 0, scale: 0.94 });
+
+      tl.fromTo(".title", { autoAlpha: 0, y: 26 }, { autoAlpha: 1, y: 0, duration: 0.42, ease: "power3.out" }, 0.18);
+      tl.to(".title", { autoAlpha: 0, y: -14, duration: 0.34, ease: "power2.in" }, 2.36);
+      tl.to(".meter span", { scaleX: 1, duration: {{DURATION}}, ease: "none" }, 0);
+      tl.fromTo(".grade", { opacity: 0.26 }, { opacity: 0.42, duration: {{DURATION}}, ease: "sine.inOut" }, 0);
+
+      cutTimes.forEach((time, index) => {
+        tl.set(".flash", { backgroundColor: flashColors[index % flashColors.length] }, time - 0.02);
+        tl.fromTo(".flash", { opacity: 0 }, { opacity: 0.34, duration: 0.045, ease: "none", overwrite: "auto" }, time - 0.015);
+        tl.to(".flash", { opacity: 0, duration: 0.18, ease: "power2.out", overwrite: "auto" }, time + 0.035);
+        tl.fromTo(".pulse", { opacity: 0.34, scale: 0.93 }, { opacity: 0, scale: 1.08, duration: 0.42, ease: "power2.out" }, time);
+      });
+
+      tl.to(".vignette", { boxShadow: "inset 0 0 260px 90px rgba(0, 0, 0, 0.88)", duration: 3.3, ease: "power2.in" }, {{FINAL_VIGNETTE_START}});
+      tl.fromTo(".title", { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.48, ease: "power3.out" }, {{FINAL_TITLE_START}});
+      tl.to(".title", { autoAlpha: 0, y: -10, duration: 0.46, ease: "power2.in" }, {{FINAL_TITLE_END}});
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
+

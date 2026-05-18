@@ -1,0 +1,14 @@
+{
+  "name": "video-mix-with-codex",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Beat-synced music video editing workflow for Codex, FFmpeg, and HyperFrames.",
+  "scripts": {
+    "analyze": "powershell -ExecutionPolicy Bypass -File ./scripts/Analyze-Media.ps1",
+    "new": "powershell -ExecutionPolicy Bypass -File ./scripts/New-VideoMixProject.ps1",
+    "render": "powershell -ExecutionPolicy Bypass -File ./scripts/Render-VideoMix.ps1",
+    "qa": "powershell -ExecutionPolicy Bypass -File ./scripts/Test-VideoMix.ps1",
+    "vertical": "powershell -ExecutionPolicy Bypass -File ./scripts/New-VerticalVersion.ps1"
+  }
+}
+
