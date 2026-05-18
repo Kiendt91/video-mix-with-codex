@@ -26,8 +26,8 @@ $config = Get-Content -LiteralPath $edlPath -Raw | ConvertFrom-Json
 $project = $config.project
 $music = $config.music
 $shots = @($config.shots)
-$dialogue = @($config.dialogue)
-$captions = @($config.captions)
+$dialogue = @($config.dialogue) | Where-Object { $null -ne $_ }
+$captions = @($config.captions) | Where-Object { $null -ne $_ }
 
 if ($shots.Count -eq 0) {
   throw "EDL has no shots."
