@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Video Mix Studio</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101112;
+        --panel: #181a1d;
+        --panel-2: #22262b;
+        --line: #343941;
+        --text: #f1eee6;
+        --muted: #a9adb5;
+        --accent: #d9b45f;
+        --accent-2: #72c6b8;
+        --danger: #ff917d;
+        --ok: #8bd28d;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Arial, sans-serif;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(16, 17, 18, 0.94);
+      }
+      h1, h2, p { margin: 0; }
+      h1 { font-size: 22px; }
+      h2 {
+        font-size: 13px;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(500px, 0.95fr) minmax(460px, 1.05fr);
+        gap: 16px;
+        padding: 16px;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+      }
+      .two {
+        grid-template-columns: 1fr 1fr;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      input, textarea, select {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #0e0f10;
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+        padding: 10px;
+      }
+      textarea {
+        min-height: 118px;
+        resize: vertical;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      button {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 10px 12px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      button.primary {
+        border-color: #b9974c;
+        background: #3a2e15;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      .checks {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .checks label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #111315;
+      }
+      .checks input {
+        width: auto;
+      }
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+      .dot.running { background: var(--accent); }
+      .dot.completed { background: var(--ok); }
+      .dot.failed { background: var(--danger); }
+      pre {
+        margin: 0;
+        min-height: 420px;
+        max-height: 620px;
+        overflow: auto;
+        white-space: pre-wrap;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #080909;
+        color: #d7d2c6;
+        padding: 12px;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .job-list {
+        display: grid;
+        gap: 8px;
+        max-height: 148px;
+        overflow: auto;
+      }
+      .provider-grid {
+        display: grid;
+        grid-template-columns: 120px 1fr 1fr 1fr;
+        gap: 8px;
+        align-items: end;
+      }
+      .task-grid {
+        display: grid;
+        grid-template-columns: 1fr 160px 1fr 100px;
+        gap: 8px;
+        align-items: end;
+      }
+      .provider-name {
+        color: var(--text);
+        font-size: 13px;
+        padding-bottom: 10px;
+      }
+      .job {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel-2);
+        font-size: 12px;
+      }
+      a { color: var(--accent-2); }
+      @media (max-width: 1080px) {
+        main { grid-template-columns: 1fr; }
+        .two, .checks { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Video Mix Studio</h1>
+        <p class="hint">Local control panel for source audit, EDL pipeline, render QA, and review UI.</p>
+      </div>
+      <div class="status"><span class="dot" id="healthDot"></span><span id="healthText">checking server</span></div>
+    </header>
+    <main>
+      <section class="grid">
+        <h2>Project Inputs</h2>
+        <div class="grid two">
+          <label>Work folder
+            <input id="workDir" value="D:\hyperframes\generated\studio-test" />
+          </label>
+          <label>Mode
+            <select id="mode">
+              <option value="Cinematic">Cinematic story MV</option>
+              <option value="Beat">Beat-cut MV</option>
+            </select>
+          </label>
+        </div>
+        <label>Source videos folder or file path
+          <input id="sources" value="D:\hyperframes\generated\cinematic-romance-youtube-test\sources" />
+        </label>
+        <div class="grid two">
+          <label>Music URL
+            <input id="musicUrl" placeholder="https://www.youtube.com/watch?v=..." />
+          </label>
+          <label>Music file path
+            <input id="musicPath" value="D:\hyperframes\generated\romance-beat-mv-dSBzy8yifME\music\can-i-see-you-again-dSBzy8yifME.m4a" />
+          </label>
+        </div>
+        <label>EDL path
+          <input id="edl" value="D:\hyperframes\generated\romance-beat-mv-dSBzy8yifME\edl.draft.json" />
+        </label>
+        <div class="grid two">
+          <label>Project output folder
+            <input id="projectDir" placeholder="optional, defaults to WorkDir\project-mode" />
+          </label>
+          <label>Render output
+            <input id="renderOutput" value="renders\final.mp4" />
+          </label>
+        </div>
+        <label>GSAP path
+          <input id="gsapPath" value="D:\hyperframes\generated\cinematic-romance-youtube-test\project\gsap.min.js" />
+        </label>
+        <label>Brief / script for AI draft
+          <textarea id="brief" placeholder="Paste the edit brief, story notes, dialogue plan, or style constraints here."></textarea>
+        </label>
+        <div class="checks">
+          <label><input id="render" type="checkbox" /> Render</label>
+          <label><input id="createReview" type="checkbox" checked /> Create review</label>
+          <label><input id="force" type="checkbox" checked /> Force overwrite</label>
+          <label><input id="useOcr" type="checkbox" /> Use OCR</label>
+          <label><input id="skipSourceAudit" type="checkbox" /> Skip source audit</label>
+          <label><input id="skipCandidateAudit" type="checkbox" /> Skip candidate audit</label>
+        </div>
+        <div class="actions">
+          <button id="prepareBtn">Prepare Media</button>
+          <button id="briefBtn">Create AI Brief</button>
+          <button id="pipelineBtn" class="primary">Run Pipeline</button>
+          <button id="reviewBtn">Create Review Only</button>
+          <button id="qaBtn">Run QA Only</button>
+        </div>
+        <p class="hint">
+          Browser file pickers do not expose full Windows paths. Paste absolute paths here so the local backend can run FFmpeg/PowerShell directly without copying large media.
+        </p>
+      </section>
+      <section class="grid">
+        <h2>AI Providers</h2>
+        <p class="hint">Optional. Keys are saved locally outside the repo. Leave key fields blank to keep existing saved keys or environment variables.</p>
+        <div class="grid" id="providerSettings"></div>
+        <h2>Task Assignment</h2>
+        <div class="grid" id="taskSettings"></div>
+        <label>AI task prompt override
+          <textarea id="aiPrompt" placeholder="Optional. Leave blank to build a prompt from project paths, brief, EDL, metadata, candidate audit, and QA summary."></textarea>
+        </label>
+        <div class="grid two">
+          <label>AI task
+            <select id="aiTask">
+              <option value="draftEdl">Draft EDL</option>
+              <option value="repairEdl">Repair EDL</option>
+              <option value="reviewQa">Review QA</option>
+              <option value="shotSelection">Shot Selection</option>
+              <option value="scriptToPlan">Script to Plan</option>
+            </select>
+          </label>
+          <label>AI output path
+            <input id="aiOutputPath" placeholder="optional, defaults to WorkDir\\ai\\task-timestamp.txt" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="loadAiBtn">Load AI Settings</button>
+          <button id="saveAiBtn">Save AI Settings</button>
+          <button id="runAiBtn" class="primary">Run AI Task</button>
+        </div>
+      </section>
+      <section class="grid">
+        <h2>Jobs</h2>
+        <div class="job-list" id="jobs"></div>
+        <div class="status"><span class="dot" id="jobDot"></span><span id="jobStatus">no active job</span></div>
+        <pre id="log">Ready.</pre>
+      </section>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const jobs = new Map();
+      let activeJobId = null;
+      let pollTimer = null;
+      let aiSettings = null;
+      const taskLabels = {
+        draftEdl: "Draft EDL",
+        repairEdl: "Repair EDL",
+        reviewQa: "Review QA",
+        shotSelection: "Shot Selection",
+        scriptToPlan: "Script to Plan",
+      };
+
+      function value(id) {
+        return $(id).value.trim();
+      }
+      function checked(id) {
+        return $(id).checked;
+      }
+      function payloadBase() {
+        return {
+          workDir: value("workDir"),
+          sources: value("sources"),
+          musicUrl: value("musicUrl"),
+          musicPath: value("musicPath"),
+          edl: value("edl"),
+          mode: value("mode"),
+          projectDir: value("projectDir"),
+          gsapPath: value("gsapPath"),
+          renderOutput: value("renderOutput"),
+          render: checked("render"),
+          createReview: checked("createReview"),
+          force: checked("force"),
+          useOcr: checked("useOcr"),
+          skipSourceAudit: checked("skipSourceAudit"),
+          skipCandidateAudit: checked("skipCandidateAudit"),
+          brief: value("brief"),
+        };
+      }
+      async function postJson(url, body) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+      }
+      async function health() {
+        try {
+          const res = await fetch("/api/health");
+          const data = await res.json();
+          $("healthDot").className = "dot completed";
+          $("healthText").textContent = `server ready · ${data.repoRoot}`;
+        } catch (error) {
+          $("healthDot").className = "dot failed";
+          $("healthText").textContent = error.message;
+        }
+      }
+      function providerOptions(selected) {
+        return Object.entries(aiSettings?.providers || {}).map(([id, provider]) => {
+          const label = `${provider.label}${provider.hasApiKey ? " (key)" : ""}`;
+          return `<option value="${id}" ${id === selected ? "selected" : ""}>${label}</option>`;
+        }).join("");
+      }
+      async function loadAiSettings() {
+        const res = await fetch("/api/ai/settings");
+        aiSettings = await res.json();
+        renderAiSettings();
+      }
+      function renderAiSettings() {
+        const providers = aiSettings?.providers || {};
+        $("providerSettings").innerHTML = Object.entries(providers).map(([id, provider]) => `
+          <div class="provider-grid" data-provider="${id}">
+            <div class="provider-name">${provider.label}${provider.hasApiKey ? " · saved/env key" : ""}</div>
+            <label>Base URL
+              <input data-provider-field="${id}:baseUrl" value="${provider.baseUrl || ""}" />
+            </label>
+            <label>Model
+              <input data-provider-field="${id}:model" value="${provider.model || ""}" />
+            </label>
+            <label>API key
+              <input data-provider-field="${id}:apiKey" type="password" placeholder="${provider.hasApiKey ? "leave blank to keep" : "paste key"}" />
+            </label>
+          </div>
+        `).join("");
+        const tasks = aiSettings?.tasks || {};
+        $("taskSettings").innerHTML = Object.entries(taskLabels).map(([task, label]) => {
+          const route = tasks[task] || {};
+          return `
+            <div class="task-grid" data-task="${task}">
+              <div class="provider-name">${label}</div>
+              <label>Provider
+                <select data-task-field="${task}:provider">${providerOptions(route.provider)}</select>
+              </label>
+              <label>Model override
+                <input data-task-field="${task}:model" value="${route.model || ""}" placeholder="optional" />
+              </label>
+              <label>Temp
+                <input data-task-field="${task}:temperature" value="${route.temperature ?? 0.2}" />
+              </label>
+            </div>
+          `;
+        }).join("");
+      }
+      function collectAiSettings() {
+        const providers = {};
+        document.querySelectorAll("[data-provider-field]").forEach((input) => {
+          const [id, field] = input.dataset.providerField.split(":");
+          providers[id] = providers[id] || {};
+          providers[id][field] = input.value.trim();
+        });
+        const tasks = {};
+        document.querySelectorAll("[data-task-field]").forEach((input) => {
+          const [task, field] = input.dataset.taskField.split(":");
+          tasks[task] = tasks[task] || {};
+          tasks[task][field] = field === "temperature" ? Number(input.value || 0.2) : input.value.trim();
+        });
+        return { providers, tasks };
+      }
+      function setButtons(disabled) {
+        document.querySelectorAll("button").forEach((button) => {
+          button.disabled = disabled;
+        });
+      }
+      function renderJobs() {
+        $("jobs").innerHTML = Array.from(jobs.values()).reverse().map((job) => `
+          <button class="job" data-job="${job.id}">
+            <span class="dot ${job.status}"></span>
+            <span>${job.label} #${job.id}</span>
+            <span>${job.status}</span>
+          </button>
+        `).join("");
+        document.querySelectorAll("[data-job]").forEach((button) => {
+          button.addEventListener("click", () => {
+            activeJobId = button.dataset.job;
+            const job = jobs.get(activeJobId);
+            if (job) showJob(job);
+          });
+        });
+      }
+      function showJob(job) {
+        $("jobDot").className = `dot ${job.status}`;
+        $("jobStatus").textContent = `${job.label} #${job.id} · ${job.status}${job.exitCode !== null ? ` · exit ${job.exitCode}` : ""}`;
+        $("log").textContent = [
+          `$ ${job.command}`,
+          "",
+          ...job.logs.map((entry) => `[${entry.kind}] ${entry.line}`),
+        ].join("\n");
+        $("log").scrollTop = $("log").scrollHeight;
+      }
+      async function startJob(url, body) {
+        const job = await postJson(url, body);
+        jobs.set(job.id, job);
+        activeJobId = job.id;
+        renderJobs();
+        showJob(job);
+        setButtons(true);
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(pollActive, 1000);
+      }
+      async function pollActive() {
+        if (!activeJobId) return;
+        const res = await fetch(`/api/jobs/${activeJobId}`);
+        const job = await res.json();
+        jobs.set(job.id, job);
+        renderJobs();
+        showJob(job);
+        if (job.status !== "running") {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          setButtons(false);
+        }
+      }
+      $("prepareBtn").addEventListener("click", () => {
+        const body = payloadBase();
+        body.edl = "";
+        body.render = false;
+        body.createReview = false;
+        startJob("/api/jobs/pipeline", body).catch(alert);
+      });
+      $("pipelineBtn").addEventListener("click", () => {
+        startJob("/api/jobs/pipeline", payloadBase()).catch(alert);
+      });
+      $("reviewBtn").addEventListener("click", () => {
+        const body = payloadBase();
+        startJob("/api/jobs/review", {
+          projectDir: body.projectDir || `${body.workDir}\\project-${String(body.mode || "cinematic").toLowerCase()}`,
+          edl: body.edl,
+          finalMp4: body.renderOutput && (body.projectDir || body.workDir) ? "" : "",
+          candidateAuditDir: `${body.workDir}\\audit\\candidates`,
+        }).catch(alert);
+      });
+      $("qaBtn").addEventListener("click", () => {
+        const body = payloadBase();
+        startJob("/api/jobs/qa", {
+          projectDir: body.projectDir || `${body.workDir}\\project-${String(body.mode || "cinematic").toLowerCase()}`,
+          edl: body.edl,
+          failOnBlackFrames: true,
+        }).catch(alert);
+      });
+      $("briefBtn").addEventListener("click", async () => {
+        try {
+          const data = await postJson("/api/brief", payloadBase());
+          $("log").textContent = `AI brief written:\n${data.briefPath}\n\nOpen:\n${data.briefUrl}`;
+          $("jobStatus").textContent = "brief created";
+          $("jobDot").className = "dot completed";
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+      $("loadAiBtn").addEventListener("click", () => {
+        loadAiSettings().catch((error) => alert(error.message));
+      });
+      $("saveAiBtn").addEventListener("click", async () => {
+        try {
+          aiSettings = await postJson("/api/ai/settings", collectAiSettings());
+          renderAiSettings();
+          $("log").textContent = `AI settings saved locally.\n${aiSettings.configPath}`;
+          $("jobStatus").textContent = "AI settings saved";
+          $("jobDot").className = "dot completed";
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+      $("runAiBtn").addEventListener("click", () => {
+        const body = payloadBase();
+        const task = value("aiTask");
+        startJob("/api/ai/run-task", {
+          ...body,
+          task,
+          prompt: value("aiPrompt"),
+          outputPath: value("aiOutputPath"),
+          mediaMetadata: `${body.workDir}\\audit\\metadata\\sources.ffprobe.json`,
+          candidateAudit: `${body.workDir}\\audit\\candidates\\candidate-audit.json`,
+          qaSummary: `${body.projectDir || `${body.workDir}\\project-${String(body.mode || "cinematic").toLowerCase()}`}\\qa\\qa-summary.json`,
+        }).catch(alert);
+      });
+      health();
+      loadAiSettings().catch(() => {});
+    </script>
+  </body>
+</html>

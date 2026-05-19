@@ -19,6 +19,13 @@ probe/
 *.flac
 *.aac
 
+# Tracked public demo assets
+!samples/
+!samples/*.mp4
+!docs/
+!docs/assets/
+!docs/assets/*.png
+
 # HyperFrames/local caches
 .hyperframes/
 node_modules/
@@ -29,4 +36,3 @@ node_modules/
 Thumbs.db
 desktop.ini
 *.log
-

@@ -5,7 +5,13 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$OutDir,
 
-  [int]$ThumbWidth = 480
+  [int]$ThumbWidth = 480,
+
+  [double]$DarkThreshold = 0.08,
+
+  [double]$BrightThreshold = 0.92,
+
+  [switch]$UseOcr
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,6 +30,54 @@ $framesDir = Join-Path $OutDir "frames"
 New-Item -ItemType Directory -Force -Path $framesDir | Out-Null
 
 Add-Type -AssemblyName System.Drawing
+
+function Get-FrameStats([string]$Path) {
+  $image = [System.Drawing.Bitmap]::FromFile($Path)
+  try {
+    $sampleStepX = [Math]::Max(1, [int]($image.Width / 80))
+    $sampleStepY = [Math]::Max(1, [int]($image.Height / 45))
+    $sum = 0.0
+    $count = 0
+    $bottomSum = 0.0
+    $bottomCount = 0
+    $bottomStart = [int]($image.Height * 0.76)
+    for ($y = 0; $y -lt $image.Height; $y += $sampleStepY) {
+      for ($x = 0; $x -lt $image.Width; $x += $sampleStepX) {
+        $pixel = $image.GetPixel($x, $y)
+        $luma = ((0.2126 * $pixel.R) + (0.7152 * $pixel.G) + (0.0722 * $pixel.B)) / 255.0
+        $sum += $luma
+        $count++
+        if ($y -ge $bottomStart) {
+          $bottomSum += $luma
+          $bottomCount++
+        }
+      }
+    }
+    [pscustomobject]@{
+      averageLuma = if ($count -gt 0) { [Math]::Round($sum / $count, 4) } else { $null }
+      bottomLuma = if ($bottomCount -gt 0) { [Math]::Round($bottomSum / $bottomCount, 4) } else { $null }
+    }
+  } finally {
+    $image.Dispose()
+  }
+}
+
+function Invoke-OptionalOcr([string]$Path) {
+  if (-not $UseOcr) { return $null }
+  if (-not (Get-Command tesseract -ErrorAction SilentlyContinue)) { return $null }
+  $tmp = [IO.Path]::ChangeExtension([IO.Path]::GetTempFileName(), $null)
+  try {
+    & tesseract $Path $tmp --psm 6 2>$null | Out-Null
+    $txt = $tmp + ".txt"
+    if (Test-Path -LiteralPath $txt) {
+      return (Get-Content -LiteralPath $txt -Raw).Trim()
+    }
+  } finally {
+    Remove-Item -LiteralPath ($tmp + ".txt") -Force -ErrorAction SilentlyContinue
+  }
+  return $null
+}
+
 $rows = New-Object System.Collections.Generic.List[string]
 $manifest = New-Object System.Collections.Generic.List[object]
 
@@ -39,11 +93,16 @@ for ($i = 0; $i -lt $shots.Count; $i++) {
   )
 
   $framePaths = @()
+  $frameStats = @()
+  $ocrText = @()
   for ($j = 0; $j -lt $times.Count; $j++) {
     $frame = Join-Path $framesDir ("{0}-{1:D2}.jpg" -f $id, $j)
     ffmpeg -hide_banner -y -ss $times[$j] -i $shot.source -frames:v 1 -vf "scale=${ThumbWidth}:-1" -update 1 $frame
     if ($LASTEXITCODE -ne 0) { throw "Frame extraction failed for $id at $($times[$j])s." }
     $framePaths += $frame
+    $frameStats += Get-FrameStats $frame
+    $text = Invoke-OptionalOcr $frame
+    if ($text) { $ocrText += $text }
   }
 
   $images = @($framePaths | ForEach-Object { [System.Drawing.Image]::FromFile($_) })
@@ -67,6 +126,19 @@ for ($i = 0; $i -lt $shots.Count; $i++) {
     foreach ($image in $images) { $image.Dispose() }
   }
 
+  $risks = New-Object System.Collections.Generic.List[string]
+  $lumas = @($frameStats | ForEach-Object { $_.averageLuma })
+  if (@($lumas | Where-Object { $_ -ne $null -and $_ -le $DarkThreshold }).Count -gt 0) {
+    $risks.Add("dark-or-black-frame")
+  }
+  if (@($lumas | Where-Object { $_ -ne $null -and $_ -ge $BrightThreshold }).Count -gt 0) {
+    $risks.Add("bright-or-title-card-like-frame")
+  }
+  $riskText = (([string]$shot.visualRisk) + " " + ($ocrText -join " ")).ToLowerInvariant()
+  if ($riskText -match "subtitle|caption|credit|title|episode|ep\s*\d|subscribe|lico|logo|ending|outro") {
+    $risks.Add("text-or-card-risk")
+  }
+
   $manifest.Add([pscustomobject]@{
     id = $id
     source = [string]$shot.source
@@ -74,6 +146,9 @@ for ($i = 0; $i -lt $shots.Count; $i++) {
     duration = $duration
     storyBeat = [string]$shot.storyBeat
     visualRisk = [string]$shot.visualRisk
+    riskFlags = @($risks | Sort-Object -Unique)
+    frameStats = $frameStats
+    ocrText = if ($ocrText.Count -gt 0) { $ocrText -join "`n---`n" } else { $null }
   })
 }
 

@@ -7,6 +7,14 @@ param(
 
   [string]$GsapPath,
 
+  [string]$CacheDir,
+
+  [double]$ClipPreloadSec = 0.08,
+
+  [switch]$NoCache,
+
+  [switch]$PreserveTrackIndex,
+
   [switch]$Force
 )
 
@@ -18,7 +26,23 @@ function Escape-Html([string]$Text) {
 }
 
 function To-JsonLiteral($Value) {
+  if ($null -eq $Value) { return "[]" }
+  if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+    $items = New-Object System.Collections.Generic.List[object]
+    foreach ($item in $Value) { $items.Add($item) }
+    return (ConvertTo-Json -InputObject $items.ToArray() -Compress)
+  }
   return ($Value | ConvertTo-Json -Compress)
+}
+
+function Get-CacheKey([string]$Text) {
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+    return (($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString("x2") }) -join "")
+  } finally {
+    $sha.Dispose()
+  }
 }
 
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
@@ -33,7 +57,7 @@ if (Test-Path -LiteralPath $validator) {
 $edlPath = Resolve-Path -LiteralPath $Edl
 $config = Get-Content -LiteralPath $edlPath -Raw | ConvertFrom-Json
 $project = $config.project
-$audio = $config.audio
+$audio = if ($config.audio) { $config.audio } elseif ($config.music) { $config.music } else { $null }
 $shots = @($config.shots)
 
 if ($shots.Count -eq 0) {
@@ -48,6 +72,12 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "media") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "renders") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "snapshots") | Out-Null
+if (-not $CacheDir) {
+  $CacheDir = Join-Path (Split-Path -Parent $OutDir) ".shot-cache"
+}
+if (-not $NoCache) {
+  New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
+}
 
 $width = [int]$project.width
 $height = [int]$project.height
@@ -56,12 +86,13 @@ $duration = [double]$project.duration
 $audioOut = Join-Path $OutDir "media\music.mp3"
 $audioStart = [double]$audio.start
 $audioDuration = [double]$audio.duration
+$audioVolume = if ($audio.volume -ne $null) { [double]$audio.volume } else { 1.0 }
 $fadeIn = if ($audio.fadeIn -ne $null) { [double]$audio.fadeIn } else { 0.2 }
 $fadeOut = if ($audio.fadeOut -ne $null) { [double]$audio.fadeOut } else { 0.8 }
 $fadeOutStart = [Math]::Max(0, $audioDuration - $fadeOut)
 
 ffmpeg -hide_banner -y -ss $audioStart -t $audioDuration -i $audio.path -vn `
-  -af "afade=t=in:st=0:d=${fadeIn},afade=t=out:st=${fadeOutStart}:d=${fadeOut}" `
+  -af "volume=${audioVolume},afade=t=in:st=0:d=${fadeIn},afade=t=out:st=${fadeOutStart}:d=${fadeOut}" `
   -c:a libmp3lame -b:a 192k $audioOut
 if ($LASTEXITCODE -ne 0) { throw "Audio extraction failed." }
 
@@ -76,14 +107,29 @@ for ($i = 0; $i -lt $shots.Count; $i++) {
   $srcStart = [double]$shot.sourceStart
   $shotDuration = [double]$shot.duration
   $timelineStart = [double]$shot.timelineStart
+  $preload = if ($i -gt 0) { [Math]::Min($ClipPreloadSec, [Math]::Max(0, $srcStart)) } else { 0 }
+  $extractStart = [Math]::Max(0, $srcStart - $preload)
+  $extractDuration = $shotDuration + $preload + 0.05
+  $clipStart = [Math]::Max(0, $timelineStart - $preload)
+  $clipDuration = $shotDuration + $preload
+  $trackIndex = if ($PreserveTrackIndex -and $shot.trackIndex -ne $null) { [int]$shot.trackIndex } else { $i % 2 }
 
   $vf = "scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=yuv420p,fps=$fps"
-  ffmpeg -hide_banner -y -ss $srcStart -t ($shotDuration + 0.05) -i $shot.source -an `
-    -vf $vf -c:v libx264 -preset veryfast -crf 20 -g $fps -keyint_min $fps -sc_threshold 0 -movflags +faststart $shotOut
-  if ($LASTEXITCODE -ne 0) { throw "Shot extraction failed: $id" }
+  $cacheKey = Get-CacheKey ("beat|{0}|{1:F3}|{2:F3}|{3}|{4}|{5}|crf20|{6}" -f [string]$shot.source, $extractStart, $extractDuration, $width, $height, $fps, $vf)
+  $cacheFile = if ($NoCache) { $null } else { Join-Path $CacheDir ($cacheKey + ".mp4") }
+  if ($cacheFile -and (Test-Path -LiteralPath $cacheFile -PathType Leaf)) {
+    Copy-Item -LiteralPath $cacheFile -Destination $shotOut -Force
+  } else {
+    ffmpeg -hide_banner -y -ss $extractStart -t $extractDuration -i $shot.source -an `
+      -vf $vf -c:v libx264 -preset veryfast -crf 20 -g $fps -keyint_min $fps -sc_threshold 0 -movflags +faststart $shotOut
+    if ($LASTEXITCODE -ne 0) { throw "Shot extraction failed: $id" }
+    if ($cacheFile) {
+      Copy-Item -LiteralPath $shotOut -Destination $cacheFile -Force
+    }
+  }
 
   if ($timelineStart -gt 0) { $cutTimes.Add($timelineStart) }
-  $videoTags.Add("      <video id=""$id"" class=""clip video-shot"" data-start=""$timelineStart"" data-duration=""$shotDuration"" data-track-index=""0"" src=""./media/$shotFile"" muted playsinline preload=""auto""></video>")
+  $videoTags.Add("      <video id=""$id"" class=""clip video-shot"" data-start=""$clipStart"" data-visible-start=""$timelineStart"" data-duration=""$clipDuration"" data-visible-duration=""$shotDuration"" data-track-index=""$trackIndex"" src=""./media/$shotFile"" muted playsinline preload=""auto""></video>")
 }
 
 $templatePath = Join-Path $PSScriptRoot "..\templates\hyperframes\index.template.html"

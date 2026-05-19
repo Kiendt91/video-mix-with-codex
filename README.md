@@ -4,6 +4,10 @@ A practical workflow for editing music videos with Codex, FFmpeg, and HyperFrame
 
 The project is built around a simple idea: do not pick video timestamps blindly. First understand the song, screen the footage, decide what every shot and audio line is doing, then render and QA the result before delivery.
 
+![Video Mix Studio UI](docs/assets/studio-ui.png)
+
+Sample output: [samples/final-16x9-99.008s.mp4](samples/final-16x9-99.008s.mp4)
+
 It supports two common edit styles:
 
 - **Beat-cut MV**: the music drives the edit, with cuts and visual accents placed on beats or phrase changes.
@@ -60,6 +64,30 @@ Run the environment check before starting a new machine or project:
 .\scripts\Test-Environment.ps1
 ```
 
+## Local Studio UI
+
+Start the local control panel:
+
+```powershell
+npm run studio
+```
+
+Then open `http://127.0.0.1:4327`.
+
+The Studio UI lets you paste Windows paths for source videos, music, EDL, output folders, and an edit brief. From the browser you can:
+
+- Prepare media: download/probe music, probe sources, and create source contact sheets.
+- Create an AI brief file for Codex to draft an EDL from the selected inputs.
+- Configure optional AI providers: OpenAI, Claude/Anthropic, Gemini, Grok/xAI, or a custom OpenAI-compatible endpoint.
+- Assign tasks to specific providers: draft EDL, repair EDL, QA review, shot selection, or script-to-plan.
+- Run the full pipeline: validate EDL, candidate audit, generate project, optional render, QA, and review page.
+- Run QA only or regenerate the review UI for an existing project.
+- Watch job logs live without switching terminals.
+
+Because browser file pickers do not expose absolute local paths, the first Studio version uses pasteable full paths instead of uploading large videos. This keeps FFmpeg working directly on original media and avoids slow copies.
+
+AI providers are optional. Studio saves provider settings outside the repo at `%APPDATA%\video-mix-with-codex\ai-settings.json` on Windows, so API keys are not committed. You can also use environment variables such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `XAI_API_KEY`. The AI layer drafts, repairs, or reviews edit decisions; FFmpeg, HyperFrames rendering, and QA remain local and deterministic.
+
 ## Quick Start: Beat-Cut MV
 
 Copy the example EDL, update paths, then generate and render:
@@ -79,6 +107,26 @@ Copy-Item .\examples\edl.example.json D:\video-renders\my-mix\edl.json
 ```
 
 Use this when you want a clean montage driven mostly by rhythm and visual energy.
+
+## Fast Pipeline
+
+For repeat jobs, use the pipeline script to run the mechanical parts in one pass:
+
+```powershell
+.\scripts\Invoke-VideoMixPipeline.ps1 `
+  -WorkDir D:\video-renders\my-story-mv `
+  -Sources D:\video-renders\my-story-mv\sources `
+  -MusicUrl "https://www.youtube.com/watch?v=..." `
+  -Edl D:\video-renders\my-story-mv\edl.json `
+  -Mode Cinematic `
+  -Render `
+  -CreateReview `
+  -Force
+```
+
+Without `-Edl`, the script prepares media only: music download, ffprobe metadata, 8s and 6s source contact sheets. With `-Edl`, it validates the EDL, creates the candidate audit, generates the HyperFrames project, and optionally renders plus runs final QA.
+
+Generated projects now cache normalized shot clips under `.shot-cache` next to the project work directory. Re-running after small EDL/template fixes reuses unchanged shots instead of re-encoding every clip. Pass `-NoCache` to the project generator when you need a completely fresh extraction.
 
 ## Quick Start: Cinematic Story MV
 
@@ -253,11 +301,40 @@ ffmpeg -hide_banner -i final.mp4 -vf "blackdetect=d=0.08:pix_th=0.08" -an -f nul
 
 Also extract representative frames from the rendered MP4, not only preview snapshots. Check the first visible frame, every important transition, every dialogue moment, the climax, and the final resolve.
 
+The faster version is:
+
+```powershell
+.\scripts\Test-VideoMix.ps1 `
+  -ProjectDir D:\video-renders\my-story-mv\project `
+  -FinalMp4 D:\video-renders\my-story-mv\project\renders\final.mp4 `
+  -Edl D:\video-renders\my-story-mv\edl.json `
+  -CreateContactSheet `
+  -FailOnBlackFrames
+```
+
+This writes `qa\qa-summary.json`, `qa\blackdetect.txt`, `qa\audio\volumedetect.txt`, representative frames, and `qa\final-frame-contact-sheet.jpg`.
+
+## Edit Review UI
+
+Generate a static review page for an edit:
+
+```powershell
+.\scripts\New-EditReview.ps1 `
+  -ProjectDir D:\video-renders\my-story-mv\project `
+  -Edl D:\video-renders\my-story-mv\edl.json `
+  -FinalMp4 D:\video-renders\my-story-mv\project\renders\final.mp4 `
+  -CandidateAuditDir D:\video-renders\my-story-mv\audit\candidates
+```
+
+Open `project\review\index.html` to inspect the video preview, synced shot timeline, song sections, shot reasons, source timing, transition notes, QA status, and contact sheets. The page is static and can be regenerated after every EDL or render change.
+
 ## Repo Layout
 
 ```text
 scripts/
   Analyze-Media.ps1             Probe media files.
+  Invoke-VideoMixPipeline.ps1    Prepare, audit, generate, render, and QA in one pass.
+  New-EditReview.ps1             Build a static review UI from EDL, render, QA, and audit files.
   Test-Environment.ps1          Check local toolchain readiness.
   Validate-Edl.ps1              Validate EDL structure and timeline consistency.
   New-ContactSheet.ps1          Create source-video contact sheets.

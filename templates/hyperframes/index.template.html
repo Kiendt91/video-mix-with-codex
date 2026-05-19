@@ -36,6 +36,8 @@
         height: 100%;
         object-fit: cover;
         background: #020202;
+        opacity: 0;
+        will-change: opacity;
       }
 
       .grade,
@@ -173,7 +175,7 @@
       gsap.set(".pulse", { opacity: 0, scale: 0.94 });
 
       tl.fromTo(".title", { autoAlpha: 0, y: 26 }, { autoAlpha: 1, y: 0, duration: 0.42, ease: "power3.out" }, 0.18);
-      tl.to(".title", { autoAlpha: 0, y: -14, duration: 0.34, ease: "power2.in" }, 2.36);
+      tl.to(".title", { autoAlpha: 0, y: -14, duration: 0.34, ease: "power2.in", overwrite: "auto" }, 2.36);
       tl.to(".meter span", { scaleX: 1, duration: {{DURATION}}, ease: "none" }, 0);
       tl.fromTo(".grade", { opacity: 0.26 }, { opacity: 0.42, duration: {{DURATION}}, ease: "sine.inOut" }, 0);
 
@@ -184,12 +186,25 @@
         tl.fromTo(".pulse", { opacity: 0.34, scale: 0.93 }, { opacity: 0, scale: 1.08, duration: 0.42, ease: "power2.out" }, time);
       });
 
+      const videoShots = Array.from(document.querySelectorAll(".video-shot"));
+      videoShots.forEach((el, index) => {
+        const start = Number(el.dataset.visibleStart || el.dataset.start || 0);
+        const duration = Number(el.dataset.visibleDuration || el.dataset.duration || 0);
+        if (index === 0) {
+          tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "sine.out" }, start);
+        } else {
+          tl.set(el, { opacity: 1 }, start);
+        }
+        const next = videoShots[index + 1];
+        const end = next ? Number(next.dataset.visibleStart || next.dataset.start || start + duration) : start + duration;
+        tl.set(el, { opacity: 0 }, Math.max(start, end + 0.04));
+      });
+
       tl.to(".vignette", { boxShadow: "inset 0 0 260px 90px rgba(0, 0, 0, 0.88)", duration: 3.3, ease: "power2.in" }, {{FINAL_VIGNETTE_START}});
-      tl.fromTo(".title", { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.48, ease: "power3.out" }, {{FINAL_TITLE_START}});
-      tl.to(".title", { autoAlpha: 0, y: -10, duration: 0.46, ease: "power2.in" }, {{FINAL_TITLE_END}});
+      tl.fromTo(".title", { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.48, ease: "power3.out", overwrite: "auto" }, {{FINAL_TITLE_START}});
+      tl.to(".title", { autoAlpha: 0, y: -10, duration: 0.46, ease: "power2.in", overwrite: "auto" }, {{FINAL_TITLE_END}});
 
       window.__timelines["main"] = tl;
     </script>
   </body>
 </html>
-

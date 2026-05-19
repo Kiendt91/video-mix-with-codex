@@ -7,6 +7,14 @@ param(
 
   [string]$GsapPath,
 
+  [string]$CacheDir,
+
+  [double]$ClipPreloadSec = 0.08,
+
+  [switch]$NoCache,
+
+  [switch]$PreserveTrackIndex,
+
   [switch]$Force
 )
 
@@ -15,6 +23,16 @@ $ErrorActionPreference = "Stop"
 function Escape-Html([string]$Text) {
   if ($null -eq $Text) { return "" }
   return $Text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace('"', "&quot;")
+}
+
+function Get-CacheKey([string]$Text) {
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+    return (($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString("x2") }) -join "")
+  } finally {
+    $sha.Dispose()
+  }
 }
 
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
@@ -46,6 +64,12 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "media") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "renders") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "snapshots") | Out-Null
+if (-not $CacheDir) {
+  $CacheDir = Join-Path (Split-Path -Parent $OutDir) ".shot-cache"
+}
+if (-not $NoCache) {
+  New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
+}
 
 $width = [int]$project.width
 $height = [int]$project.height
@@ -73,14 +97,28 @@ for ($i = 0; $i -lt $shots.Count; $i++) {
   $srcStart = [double]$shot.sourceStart
   $shotDuration = [double]$shot.duration
   $timelineStart = [double]$shot.timelineStart
-  $trackIndex = if ($shot.trackIndex -ne $null) { [int]$shot.trackIndex } else { 0 }
+  $preload = if ($i -gt 0) { [Math]::Min($ClipPreloadSec, [Math]::Max(0, $srcStart)) } else { 0 }
+  $extractStart = [Math]::Max(0, $srcStart - $preload)
+  $extractDuration = $shotDuration + $preload + 0.05
+  $clipStart = [Math]::Max(0, $timelineStart - $preload)
+  $clipDuration = $shotDuration + $preload
+  $trackIndex = if ($PreserveTrackIndex -and $shot.trackIndex -ne $null) { [int]$shot.trackIndex } else { $i % 2 }
 
   $vf = "scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=yuv420p,fps=$fps"
-  ffmpeg -hide_banner -y -ss $srcStart -t ($shotDuration + 0.05) -i $shot.source -an `
-    -vf $vf -c:v libx264 -preset veryfast -crf 19 -g $fps -keyint_min $fps -sc_threshold 0 -movflags +faststart $shotOut
-  if ($LASTEXITCODE -ne 0) { throw "Shot extraction failed: $id" }
+  $cacheKey = Get-CacheKey ("cinematic|{0}|{1:F3}|{2:F3}|{3}|{4}|{5}|crf19|{6}" -f [string]$shot.source, $extractStart, $extractDuration, $width, $height, $fps, $vf)
+  $cacheFile = if ($NoCache) { $null } else { Join-Path $CacheDir ($cacheKey + ".mp4") }
+  if ($cacheFile -and (Test-Path -LiteralPath $cacheFile -PathType Leaf)) {
+    Copy-Item -LiteralPath $cacheFile -Destination $shotOut -Force
+  } else {
+    ffmpeg -hide_banner -y -ss $extractStart -t $extractDuration -i $shot.source -an `
+      -vf $vf -c:v libx264 -preset veryfast -crf 19 -g $fps -keyint_min $fps -sc_threshold 0 -movflags +faststart $shotOut
+    if ($LASTEXITCODE -ne 0) { throw "Shot extraction failed: $id" }
+    if ($cacheFile) {
+      Copy-Item -LiteralPath $shotOut -Destination $cacheFile -Force
+    }
+  }
 
-  $videoTags.Add("      <video id=""$id"" class=""clip video-shot"" data-start=""$timelineStart"" data-duration=""$shotDuration"" data-track-index=""$trackIndex"" src=""./media/$shotFile"" muted playsinline preload=""auto""></video>")
+  $videoTags.Add("      <video id=""$id"" class=""clip video-shot"" data-start=""$clipStart"" data-visible-start=""$timelineStart"" data-duration=""$clipDuration"" data-visible-duration=""$shotDuration"" data-track-index=""$trackIndex"" src=""./media/$shotFile"" muted playsinline preload=""auto""></video>")
 }
 
 $dialogueTags = New-Object System.Collections.Generic.List[string]

@@ -10,7 +10,11 @@ param(
 
   [string]$SnapshotAt = "0.5,3.1,6.1,9.1,12.1,15.1,18.1,21.1,24.1",
 
-  [switch]$SkipSnapshots
+  [switch]$SkipSnapshots,
+
+  [switch]$RunQa,
+
+  [string]$Edl
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,6 +46,17 @@ try {
 
   npx @renderArgs
   if ($LASTEXITCODE -ne 0) { throw "hyperframes render failed." }
+
+  if ($RunQa) {
+    $qaArgs = @{
+      ProjectDir = $project.Path
+      FinalMp4 = (Join-Path $project.Path $Output)
+      CreateContactSheet = $true
+      FailOnBlackFrames = $true
+    }
+    if ($Edl) { $qaArgs.Edl = $Edl }
+    & (Join-Path $PSScriptRoot "Test-VideoMix.ps1") @qaArgs
+  }
 } finally {
   Pop-Location
 }
