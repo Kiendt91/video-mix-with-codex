@@ -16,11 +16,68 @@
     "fadeOut": 0.9
   },
   "style": {
-    "flashColors": ["#f7f0cf", "#93ffd4", "#fff0b4", "#ffd28b", "#f7f0cf", "#8ff7cc", "#ffe1a6", "#f7f0cf"]
+    "flashColors": [
+      "#f7f0cf",
+      "#93ffd4",
+      "#fff0b4",
+      "#ffd28b",
+      "#f7f0cf",
+      "#8ff7cc",
+      "#ffe1a6",
+      "#f7f0cf"
+    ]
   },
   "assets": {
     "gsap": "D:/hyperframes/generated/death-guard-11ed-video/gsap.min.js"
   },
+  "effects": [
+    {
+      "id": "fx-01",
+      "type": "flash-through-white",
+      "timelineStart": 3,
+      "duration": 0.18,
+      "target": "global",
+      "color": "#fff5d6",
+      "intensity": 1,
+      "note": "first strong beat"
+    },
+    {
+      "id": "fx-02",
+      "type": "whip-zoom",
+      "timelineStart": 6,
+      "duration": 0.28,
+      "target": "shot-03",
+      "scale": 1.14,
+      "note": "impact cut"
+    },
+    {
+      "id": "fx-03",
+      "type": "subtitle-slam",
+      "timelineStart": 6.15,
+      "duration": 0.34,
+      "target": "caption-02",
+      "intensity": 1,
+      "note": "caption punch"
+    }
+  ],
+  "captions": [
+    {
+      "id": "caption-01",
+      "timelineStart": 0.35,
+      "duration": 1.7,
+      "text": "Cold open",
+      "tone": "soft",
+      "position": "bottom"
+    },
+    {
+      "id": "caption-02",
+      "timelineStart": 5.95,
+      "duration": 1.4,
+      "text": "No mercy",
+      "tone": "impact",
+      "position": "middle"
+    }
+  ],
   "shots": [
     {
       "id": "shot-01",
@@ -48,4 +105,3 @@
     }
   ]
 }
-
