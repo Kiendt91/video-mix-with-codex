@@ -4,10 +4,7 @@
   "title": "Video Mix With Codex EDL",
   "type": "object",
   "required": ["project", "shots"],
-  "oneOf": [
-    { "required": ["music"] },
-    { "required": ["audio"] }
-  ],
+  "oneOf": [{ "required": ["music"] }, { "required": ["audio"] }],
   "properties": {
     "project": {
       "type": "object",
@@ -38,9 +35,23 @@
         "flashColors": {
           "type": "array",
           "items": { "type": "string" }
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "default",
+            "anime_game_lyric",
+            "captioned_explainer",
+            "cinematic_character",
+            "space_battle_trailer"
+          ]
         }
       },
       "additionalProperties": true
+    },
+    "effects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/effectCue" }
     },
     "shots": {
       "type": "array",
@@ -93,13 +104,150 @@
         "timelineStart": { "type": "number", "minimum": 0 },
         "duration": { "type": "number", "exclusiveMinimum": 0 },
         "trackIndex": { "type": "integer", "minimum": 0 },
+        "reframe": { "$ref": "#/$defs/reframe" },
         "audioRole": {
           "type": "string",
-          "enum": ["muted_visual", "music_bed", "dialogue_line", "dialogue_match_visual", "diegetic_sfx"]
+          "enum": [
+            "muted_visual",
+            "music_bed",
+            "dialogue_line",
+            "dialogue_match_visual",
+            "diegetic_sfx"
+          ]
         },
         "storyBeat": { "type": "string" },
         "visualRisk": { "type": "string" },
+        "effects": {
+          "type": "array",
+          "items": {
+            "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/effectCue" }]
+          }
+        },
+        "preprocessEffects": {
+          "type": "array",
+          "items": {
+            "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/preprocessEffect" }]
+          }
+        },
         "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "reframe": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["center", "manual", "keyframes"]
+        },
+        "scaleMode": {
+          "type": "string",
+          "enum": ["cover", "width", "height"]
+        },
+        "scaleWidth": { "type": "number", "minimum": 16 },
+        "scaleHeight": { "type": "number", "minimum": 16 },
+        "x": {
+          "oneOf": [{ "type": "number" }, { "type": "string" }]
+        },
+        "y": {
+          "oneOf": [{ "type": "number" }, { "type": "string" }]
+        },
+        "keyframes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/reframeKeyframe" }
+        },
+        "subject": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "reframeKeyframe": {
+      "type": "object",
+      "required": ["t"],
+      "properties": {
+        "t": { "type": "number", "minimum": 0 },
+        "x": {
+          "oneOf": [{ "type": "number" }, { "type": "string" }]
+        },
+        "y": {
+          "oneOf": [{ "type": "number" }, { "type": "string" }]
+        },
+        "subject": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "preprocessEffect": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "cinematic-grade",
+            "cold-space-grade",
+            "rgb-shift",
+            "vignette-native",
+            "frei0r",
+            "frei0r-glow",
+            "frei0r-contrast0r",
+            "frei0r-saturat0r",
+            "frei0r-distort0r"
+          ]
+        },
+        "plugin": { "type": "string" },
+        "shift": { "type": "integer" },
+        "angle": { "type": "number" },
+        "filterParams": { "type": "string" },
+        "fallback": { "type": "string" },
+        "require": { "type": "boolean" },
+        "params": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "effectCue": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "flash-through-white",
+            "impact-pulse",
+            "cinematic-zoom",
+            "whip-zoom",
+            "frame-border",
+            "chromatic-radial-split",
+            "vignette-swell",
+            "beat-freeze",
+            "anamorphic-flare",
+            "hud-scan",
+            "shake-hit",
+            "letterbox-pulse",
+            "negative-space-reset",
+            "subtitle-slam",
+            "hold-bloom"
+          ]
+        },
+        "timelineStart": { "type": "number", "minimum": 0 },
+        "start": { "type": "number", "minimum": 0 },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "target": { "type": "string" },
+        "color": { "type": "string" },
+        "intensity": { "type": "number", "minimum": 0 },
+        "scale": { "type": "number", "minimum": 0 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "note": { "type": "string" },
+        "params": {
+          "type": "object",
+          "additionalProperties": true
+        }
       },
       "additionalProperties": true
     },
@@ -129,7 +277,15 @@
         "start": { "type": "number", "minimum": 0 },
         "duration": { "type": "number", "exclusiveMinimum": 0 },
         "text": { "type": "string" },
-        "subtitle": { "type": "string" }
+        "subtitle": { "type": "string" },
+        "tone": {
+          "type": "string",
+          "enum": ["default", "soft", "alert", "impact"]
+        },
+        "position": {
+          "type": "string",
+          "enum": ["bottom", "top", "middle", "center"]
+        }
       },
       "additionalProperties": true
     }

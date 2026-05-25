@@ -12,6 +12,7 @@ It supports two common edit styles:
 
 - **Beat-cut MV**: the music drives the edit, with cuts and visual accents placed on beats or phrase changes.
 - **Cinematic story MV**: the song carries the emotion, while selected dialogue and character-focused shots tell a clear story.
+- **Reference-driven social short**: a TikTok/Reels/Shorts reference is analyzed into a style brief, pacing map, caption system, effect stack, and EDL defaults before cutting.
 
 ## Core Workflow
 
@@ -33,6 +34,7 @@ It supports two common edit styles:
 4. **Build the story and timing**
    - For a beat-cut MV, map song sections: intro, lift, drop, bridge, climax, ending.
    - For a cinematic MV, write the emotional arc first: whose POV, what changes, where the reveal lands.
+   - For a social short reference, classify the mode first: anime/game lyric edit, captioned explainer, or cinematic character short.
    - Keep each shot's reason in the EDL. If a shot has no story or rhythm purpose, cut it.
 
 5. **Assign audio roles**
@@ -64,6 +66,15 @@ Run the environment check before starting a new machine or project:
 .\scripts\Test-Environment.ps1
 ```
 
+Run the aesthetic EDL check before generating or rendering. It catches videos
+that are technically valid but likely to feel flat: missing style mode, overly
+uniform shot rhythm, repeated sources, dense flash stacks, bad effect targets,
+caption density, mojibake, and vertical crops without reframe data.
+
+```powershell
+bun run qa:aesthetic -- -Edl D:\video-renders\my-mix\edl.json
+```
+
 ## Local Studio UI
 
 Start the local control panel:
@@ -87,6 +98,150 @@ The Studio UI lets you paste Windows paths for source videos, music, EDL, output
 Because browser file pickers do not expose absolute local paths, the first Studio version uses pasteable full paths instead of uploading large videos. This keeps FFmpeg working directly on original media and avoids slow copies.
 
 AI providers are optional. Studio saves provider settings outside the repo at `%APPDATA%\video-mix-with-codex\ai-settings.json` on Windows, so API keys are not committed. You can also use environment variables such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `XAI_API_KEY`. The AI layer drafts, repairs, or reviews edit decisions; FFmpeg, HyperFrames rendering, and QA remain local and deterministic.
+
+## Social Short Skill
+
+The repo includes `skills/social-short-video-editor`, a Codex skill for turning reference shorts into reusable edit grammar. Use it when a user gives a TikTok/Reels/Shorts-style reference and asks for a similar edit. It covers anime/game lyric edits, caption-led science or story explainers, and cinematic character shorts.
+
+The skill requires a style brief before an EDL: output format, hook, pacing, cut policy, caption/lyric behavior, effect stack, audio roles, reject rules, and QA times. Its detailed reference grammar lives in `skills/social-short-video-editor/references/short-form-style-grammar.md`.
+
+## Effect Catalog
+
+The repo includes a machine-readable effect catalog at `effects/catalog.json`. When AI drafts an EDL, it should choose from that catalog and write top-level `effects[]` cues:
+
+```json
+{
+  "id": "fx-01",
+  "type": "flash-through-white",
+  "timelineStart": 3.2,
+  "duration": 0.18,
+  "target": "global",
+  "color": "#fff5d6",
+  "intensity": 1
+}
+```
+
+Supported HyperFrames runtime effects include `flash-through-white`, `impact-pulse`, `cinematic-zoom`, `whip-zoom`, `frame-border`, `chromatic-radial-split`, `vignette-swell`, `beat-freeze`, `anamorphic-flare`, `hud-scan`, `shake-hit`, `letterbox-pulse`, `negative-space-reset`, `subtitle-slam`, and `hold-bloom`. Shot-level `preprocessEffects[]` can also bake FFmpeg effects into extracted clips before assembly, including `cinematic-grade`, `cold-space-grade`, `rgb-shift`, `vignette-native`, `frei0r-glow`, `frei0r-contrast0r`, `frei0r-saturat0r`, and `frei0r-distort0r`. Frei0r effects require installed Frei0r plugins; if FFmpeg exposes `frei0r` but a plugin is missing, the generator logs a warning and uses a native FFmpeg fallback.
+
+True speed ramps or freeze-frame media retiming should be created during FFmpeg shot preprocessing, then referenced as normal shots in the EDL.
+
+## Captions
+
+Add `captions[]` to the EDL when the video needs social hook text, lyric punches, or spoken emphasis. The beat-cut template renders these as animated safe-area overlays. Use `tone` to choose visual weight and `position` to avoid covering important subjects.
+
+```json
+{
+  "captions": [
+    {
+      "id": "caption-01",
+      "timelineStart": 0.35,
+      "duration": 1.7,
+      "text": "Cold open",
+      "tone": "soft",
+      "position": "bottom"
+    },
+    {
+      "id": "caption-02",
+      "timelineStart": 5.95,
+      "duration": 1.4,
+      "text": "No mercy",
+      "tone": "impact",
+      "position": "middle"
+    }
+  ],
+  "effects": [
+    {
+      "type": "subtitle-slam",
+      "timelineStart": 6.15,
+      "duration": 0.34,
+      "target": "caption-02"
+    }
+  ]
+}
+```
+
+Supported caption tones are `default`, `soft`, `alert`, and `impact`. Supported positions are `bottom`, `top`, `middle`, and `center`.
+
+## Smart Reframe
+
+Character-focused edits should not rely on automatic center crop. Add `reframe` to each shot when the subject is off-center, moving, or when the source is landscape but the edit is vertical.
+
+Static subject crop:
+
+```json
+{
+  "id": "shot-03",
+  "source": "D:/media/source.mp4",
+  "sourceStart": 42.2,
+  "timelineStart": 5.35,
+  "duration": 1.4,
+  "reframe": {
+    "mode": "manual",
+    "scaleMode": "height",
+    "x": 690,
+    "y": 0,
+    "subject": "main character close-up"
+  }
+}
+```
+
+Moving subject crop:
+
+```json
+{
+  "id": "shot-04",
+  "source": "D:/media/source.mp4",
+  "sourceStart": 53.8,
+  "timelineStart": 6.75,
+  "duration": 1.2,
+  "reframe": {
+    "mode": "keyframes",
+    "scaleMode": "height",
+    "keyframes": [
+      { "t": 0, "x": 520, "y": 0 },
+      { "t": 0.55, "x": 650, "y": 0 },
+      { "t": 1.2, "x": 760, "y": 0 }
+    ],
+    "subject": "face and upper body"
+  }
+}
+```
+
+Use `manual` for locked-off shots and `keyframes` for shots where the face/body crosses the frame. The generator smooths between keyframes and clamps the crop to the scaled source bounds. After adding reframe data, always run a candidate audit or final frame contact sheet; the row should keep the character readable at start, middle, and end.
+
+You can generate a first-pass keyframe path from an initial subject box with OpenCV CSRT:
+
+```powershell
+python .\scripts\New-ReframePath.py `
+  --source D:\media\source.mp4 `
+  --start 20.1 `
+  --duration 2.2 `
+  --box 820,140,360,740 `
+  --target-width 1080 `
+  --target-height 1920 `
+  --scale-mode height `
+  --subject "main character face and upper body" `
+  --out D:\video-renders\my-mix\reframes\shot-04.reframe.json
+```
+
+This requires `opencv-contrib-python`. Treat the generated path as an assistant, not final truth: paste it into the shot, create a candidate audit sheet, and adjust bad keyframes manually.
+
+### Frei0r Doctor
+
+Check whether FFmpeg can actually load Frei0r plugins:
+
+```powershell
+npm run frei0r:doctor -- -Json
+```
+
+If the plugin DLLs live outside a standard location, pass the plugin folder or set `FREI0R_PATH`:
+
+```powershell
+.\scripts\Get-Frei0rStatus.ps1 -Frei0rPath "C:\Program Files\Kdenlive\lib\frei0r-1"
+.\scripts\Invoke-VideoMixPipeline.ps1 -WorkDir D:\video-renders\mv -Edl D:\video-renders\mv\edl.json -Frei0rPath "C:\Program Files\Kdenlive\lib\frei0r-1" -RequireFrei0r
+```
+
+Use `-RequireFrei0r` when the edit must fail if a requested Frei0r plugin is missing. Without it, the generator logs the missing plugin and uses a native FFmpeg fallback so the render can still complete.
 
 ## Quick Start: Beat-Cut MV
 
@@ -170,6 +325,8 @@ After drafting an EDL, create a candidate audit sheet from the exact selected ra
 ```
 
 Review `candidate-audit-sheet.jpg` before rendering. Each row shows start, middle, and end frames for a selected shot. If a row shows an episode card, unrelated subtitle, credit, black frame, or mismatched character moment, fix the EDL first.
+
+For vertical or character edits, also verify `reframe` on every tight shot. A usable candidate row should keep the face, eye, hand, or action detail inside the crop for all three frames; otherwise add `manual` or `keyframes` reframe data before rendering.
 
 ## EDL Basics
 
@@ -284,6 +441,8 @@ After a landscape render, create a 1080x1920 version for TikTok, Shorts, or Reel
 
 Review the vertical crop manually. Character edits often need custom crop decisions because faces and hands matter more than center framing.
 
+For best results, prefer building a vertical project directly with per-shot `reframe` instead of converting a finished landscape render. The vertical converter is useful for quick exports, but it cannot recover a face or hand that was already cropped out in the source timeline.
+
 ## Mandatory QA
 
 Run these checks before delivery:
@@ -339,6 +498,7 @@ scripts/
   Validate-Edl.ps1              Validate EDL structure and timeline consistency.
   New-ContactSheet.ps1          Create source-video contact sheets.
   New-CandidateAudit.ps1        Extract start/middle/end frames for selected EDL shots.
+  New-ReframePath.py            Generate reframe keyframes from an initial tracked subject box.
   New-VideoMixProject.ps1       Build a beat-cut HyperFrames project from an EDL.
   New-CinematicEditProject.ps1  Build a dialogue/story-led HyperFrames project.
   Render-VideoMix.ps1           Lint, validate, inspect, snapshot, and render.
